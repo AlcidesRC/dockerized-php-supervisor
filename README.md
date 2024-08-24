@@ -22,7 +22,14 @@ This repository contains a _dockerized_ environment for building PHP application
 - Allows you to create an optimized **development environment** Docker image
 - Allows you to create an optimized **production-ready** Docker image
 -  Using **built-in PHP webserver**.
--  Managed PHP-FPM and built-in web server via Supervisor.
+-  PHP-FPM and built-in webserver is managed by Supervisor.
+
+### Infrastructure
+
+| Docker Infrastructure | Value | Size  |
+| --------------------- | ----- | ----- |
+| Containers            | 1     | 159Mb |
+| Services              | 1     | N/A   |
 
 
 
