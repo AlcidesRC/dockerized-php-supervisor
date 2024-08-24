@@ -1,0 +1,16 @@
+services:
+    app:
+        container_name: app
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: build-development
+        image: app:supervisor
+        restart: unless-stopped
+        tty: true
+        volumes:
+            - ./src:/code
+            - ./coverage:/coverage
+        ports:
+            - 80:8080
+            - 9001:9001
