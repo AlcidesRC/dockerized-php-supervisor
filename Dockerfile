@@ -21,13 +21,23 @@ RUN apk update && apk add --no-cache \
 COPY --chmod=777 build/healthcheck.sh /healthcheck.sh
 HEALTHCHECK --interval=10s --timeout=1s --retries=3 CMD /healthcheck.sh
 
-WORKDIR /code
+WORKDIR /var/www/html
+
+#----------------------------------------------------------
+# STAGE: EXTENSIONS-BUILDER-COMMON
+#----------------------------------------------------------
+
+FROM base-image AS extensions-builder-common
+
+# Add, compile and configure PHP extensions
+RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o - | sh -s \
+        apcu
 
 #----------------------------------------------------------
 # STAGE: EXTENSIONS-BUILDER-DEV
 #----------------------------------------------------------
 
-FROM base-image AS extensions-builder-dev
+FROM extensions-builder-common AS extensions-builder-dev
 
 # Add, compile and configure PHP extensions
 RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o - | sh -s \
@@ -52,6 +62,9 @@ ENV ENV=DEVELOPMENT
 RUN addgroup --gid ${HOST_GROUP_ID} ${HOST_GROUP_NAME} \
     && adduser --shell /bin/bash --uid ${HOST_USER_ID} --ingroup ${HOST_GROUP_NAME} --ingroup www-data --disabled-password --gecos '' ${HOST_USER_NAME}
 
+# Ensure working dir is writtable by current user
+RUN chown -Rf ${HOST_USER_NAME}:${HOST_GROUP_NAME} /var/www/html
+
 # Add __ONLY__ compiled extensions & their config files
 COPY --from=extensions-builder-dev /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20230831/
 COPY --from=extensions-builder-dev /usr/local/etc/php/conf.d/* /usr/local/etc/php/conf.d/
@@ -68,15 +81,15 @@ RUN apk update && apk add --no-cache \
         supervisor \
         util-linux
 
-# Setup xDebug
-COPY build/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-RUN touch /var/log/xdebug.log \
-    && chmod 0777 /var/log/xdebug.log
-
 # Setup PHP-FPM
 COPY build/www.conf /usr/local/etc/php-fpm.d/www.conf
 RUN sed -i -r "s/USER-NAME/${HOST_USER_NAME}/g" /usr/local/etc/php-fpm.d/www.conf \
     && sed -i -r "s/GROUP-NAME/${HOST_GROUP_NAME}/g" /usr/local/etc/php-fpm.d/www.conf
+
+# Setup xDebug
+COPY build/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN touch /var/log/xdebug.log \
+    && chmod 0777 /var/log/xdebug.log
 
 # Setup SupervisorD - PHP-FPM
 COPY ./build/supervisor/php-fpm.conf /usr/local/etc/supervisord/conf.d/php-fpm.conf
@@ -97,3 +110,52 @@ RUN sed -i -r "s/USER-NAME/${HOST_USER_NAME}/g" /etc/supervisord.conf \
 
 # Override default command
 CMD ["supervisord", "--configuration", "/etc/supervisord.conf"]
+
+#----------------------------------------------------------
+# STAGE: OPTIMIZE-PHP-DEPENDENCIES
+#----------------------------------------------------------
+
+FROM composer AS optimize-php-dependencies
+
+# First copy Composer files
+COPY ./src/composer.json ./src/composer.lock /app/
+
+# Docker will cache this step and reuse it if no any change has being done on previuos step
+RUN composer install \
+    --ignore-platform-reqs \
+    --no-ansi \
+    --no-autoloader \
+    --no-interaction \
+    --no-scripts \
+    --prefer-dist \
+    --no-dev
+
+# Ensure to copy __ONLY__ the PHP application folder(s)
+# Ensure to omit the `./src/vendor` folder and avoid to install development dependencies into the optimized folder
+COPY src/app /app/app
+COPY src/public /app/public
+
+# Recompile application cache
+RUN composer dump-autoload \
+    --optimize \
+    --classmap-authoritative
+
+#----------------------------------------------------------
+# STAGE: BUILD-PRODUCTION
+#----------------------------------------------------------
+
+FROM common AS build-production
+
+ENV ENV=PRODUCTION
+
+# Add __ONLY__ compiled extensions & their config files 
+COPY --from=extensions-builder-common /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20230831/
+COPY --from=extensions-builder-common /usr/local/etc/php/conf.d/* /usr/local/etc/php/conf.d/
+
+# Add the optimized for production application
+COPY --from=optimize-php-dependencies --chown=www-data:www-data /app /var/www/html
+
+# Setup PHP-FPM
+COPY build/www.conf /usr/local/etc/php-fpm.d/www.conf
+RUN sed -i -r "s/USER-NAME/www-data/g" /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i -r "s/GROUP-NAME/www-data/g" /usr/local/etc/php-fpm.d/www.conf

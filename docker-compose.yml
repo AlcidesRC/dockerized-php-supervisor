@@ -9,8 +9,7 @@ services:
         restart: unless-stopped
         tty: true
         volumes:
-            - ./src:/code
-            - ./coverage:/coverage
+            - ./src:/var/www/html
         ports:
             - 80:8080
             - 9001:9001
