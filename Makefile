@@ -256,3 +256,8 @@ open-supervisor: ## Application: open the supervisor website
 	@xdg-open $(SUPERVISOR_URL)
 	@$(call showAlert,"Press Ctrl+C to resume your session")
 	$(call taskDone)
+
+.PHONY: init
+init: build install-caddy-certificate ## Application: initializes the application
+	$(call showInfo,"When ready just execute [ make open-website ] to visit the website with your preferred browser")
+	$(call taskDone)

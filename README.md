@@ -14,15 +14,15 @@
 
 ## Summary
 
-This repository contains a _dockerized_ environment for building PHP applications based on **php:8.3.12-fpm-alpine** with Supervisor support.
+This repository contains a _dockerized_ environment for building PHP applications based on **php:8.3.12-fpm-alpine** with Supervisor.
 
 ### Highlights
 
 - Unified environment to build <abbr title="Command Line Interface">CLI</abbr>, <u>web applications</u> and/or <u>micro-services</u> based on **PHP8**.
-- Allows you to create an optimized **development environment** Docker image
-- Allows you to create an optimized **production-ready** Docker image
--  Using **built-in PHP webserver**.
--  PHP-FPM and built-in webserver are managed by Supervisor.
+- Multi-stage Dockerfile to allows you to create an optimized **development** or **production-ready** Docker images
+- Uses the **built-in PHP webserver**.
+- PHP-FPM and built-in webserver are **managed by Supervisor**.
+- **Everything in one single Docker container**.
 
 
 
@@ -95,7 +95,7 @@ $ mkdir -p ~/path/to/my-new-project && cd ~/path/to/my-new-project
 $ git clone git@github.com:alcidesrc/dockerized-php-supervisor.git .
 ```
 
-### In short
+### Quickstart
 
 ```bash
 $ make init
@@ -115,7 +115,7 @@ $ make build
 $ make up
 ```
 
-#### Accessing to Supervisor Status web panel
+#### Accessing to Supervisor admin panel
 
 ```bash
 $ make open-supervisor
