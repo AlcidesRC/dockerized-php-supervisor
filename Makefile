@@ -28,10 +28,14 @@ endif
 
 #---
 
-SERVICE_APP = app
+SERVICE_APP = app1
 
 #---
 
+WEBSITE_URL = https://localhost
+SUPERVISOR_URL = https://guest:guest@localhost:9001
+
+#---
 
 HOST_USER_ID    := $(shell id --user)
 HOST_USER_NAME  := $(shell id --user --name)
@@ -40,15 +44,12 @@ HOST_GROUP_NAME := $(shell id --group --name)
 
 #---
 
-DOCKER_COMPOSE         = docker compose
-
-DOCKER_RUN             = $(DOCKER_COMPOSE) run --rm $(SERVICE_APP)
-DOCKER_EXEC            = $(DOCKER_COMPOSE) exec $(SERVICE_APP)
-
-DOCKER_RUN_AS_USER     = $(DOCKER_COMPOSE) run --rm --user $(HOST_USER_ID):$(HOST_GROUP_ID) $(SERVICE_APP)
-DOCKER_EXEC_AS_USER    = $(DOCKER_COMPOSE) exec --user $(HOST_USER_ID):$(HOST_GROUP_ID) $(SERVICE_APP)
+DOCKER_COMPOSE         = docker compose --file docker-compose.yml --file docker-compose.override.$(env).yml
 
 DOCKER_BUILD_ARGUMENTS = --build-arg="HOST_USER_ID=$(HOST_USER_ID)" --build-arg="HOST_USER_NAME=$(HOST_USER_NAME)" --build-arg="HOST_GROUP_ID=$(HOST_GROUP_ID)" --build-arg="HOST_GROUP_NAME=$(HOST_GROUP_NAME)"
+
+DOCKER_RUN             = $(DOCKER_COMPOSE) run --rm $(SERVICE_APP)
+DOCKER_RUN_AS_USER     = $(DOCKER_COMPOSE) run --rm --user $(HOST_USER_ID):$(HOST_GROUP_ID) $(SERVICE_APP)
 
 ###
 # FUNCTIONS
@@ -87,6 +88,11 @@ define orderedList
 	@echo ""
 endef
 
+# $(1)=PADDING NUMBER
+define pad
+	$(shell printf "%-$(1)s" " ")
+endef
+
 ###
 # HELP
 ###
@@ -94,70 +100,90 @@ endef
 .PHONY: help
 help:
 	@clear
-	@echo "╔══════════════════════════════════════════════════════════════════════════════╗"
-	@echo "║                                                                              ║"
-	@echo "║                           ${YELLOW}.:${RESET} AVAILABLE COMMANDS ${YELLOW}:.${RESET}                           ║"
-	@echo "║                                                                              ║"
-	@echo "╚══════════════════════════════════════════════════════════════════════════════╝"
+	@echo "${BLACK}"
+	@echo "╔════════════════════════════════════════════════════════════════════════════════════════════════════════╗"
+	@echo "║ $(call pad,96) ║"
+	@echo "║ $(call pad,32) ${YELLOW}.:${RESET} AVAILABLE COMMANDS ${YELLOW}:.${BLACK} $(call pad,32) ║"
+	@echo "║ $(call pad,96) ║"
+	@echo "╚════════════════════════════════════════════════════════════════════════════════════════════════════════╝"
+	@echo "${BLACK}·${RESET} ${MAGENTA}DOMAIN(s)${BLACK} .... ${CYAN}$(WEBSITE_URL)${BLACK}"
+	@echo "${BLACK}·${RESET} ${MAGENTA}SERVICE(s)${BLACK} ... ${CYAN}$(shell docker ps --format "{{.Names}}")${BLACK}"
+	@echo "${BLACK}·${RESET} ${MAGENTA}USER${BLACK} ......... ${WHITE}(${CYAN}$(HOST_USER_ID)${WHITE})${BLACK} ${CYAN}$(HOST_USER_NAME)${BLACK}"
+	@echo "${BLACK}·${RESET} ${MAGENTA}GROUP${BLACK} ........ ${WHITE}(${CYAN}$(HOST_GROUP_ID)${WHITE})${BLACK} ${CYAN}$(HOST_GROUP_NAME)${BLACK}"
+	@echo "${RESET}"
+	@grep -E '^[a-zA-Z_0-9%-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "${BLACK}·${RESET} ${YELLOW}%-35s${RESET} %s\n", $$1, $$2}'
 	@echo ""
-	@grep -E '^[a-zA-Z_0-9%-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "· ${YELLOW}%-30s${RESET} %s\n", $$1, $$2}'
-	@echo ""
-
-###
-# MISCELANEOUS
-###
-
-.PHONY: show-context
-show-context: ## Setup: show context
-	$(call showInfo,"Showing context")
-	@echo "    · Domain     : ${YELLOW}${WEBSITE_URL}${RESET}"
-	@echo "    · Host user  : (${YELLOW}${HOST_USER_ID}${RESET}) ${YELLOW}${HOST_USER_NAME}${RESET}"
-	@echo "    · Host group : (${YELLOW}${HOST_GROUP_ID}${RESET}) ${YELLOW}${HOST_GROUP_NAME}${RESET}"
-	@echo "    · Service(s) : ${YELLOW}${SERVICE_APP}${RESET}, ${YELLOW}${SERVICE_CADDY}${RESET}"
-	@echo ""
-	$(call showInfo,"SSL")
-	@echo "    · Please execute [ ${YELLOW}make install-caddy-certificate${RESET} ] to register ${CYAN}Caddy's Root Certificate${RESET} on your browser"
-	$(call taskDone)
 
 ###
 # DOCKER RELATED
 ###
 
 .PHONY: build
-build: ## Docker: builds the service
+build: ## Docker: builds the service <env=[dev|prod]>
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Building Docker image\(s\)...")
+	@echo ""
 	@$(DOCKER_COMPOSE) build $(DOCKER_BUILD_ARGUMENTS)
 	$(call taskDone)
 
 .PHONY: up
-up: ## Docker: starts the service
+up: ## Docker: starts the service <env=[dev|prod]>
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Starting service\(s\)...")
+	@echo ""
 	@$(DOCKER_COMPOSE) up --remove-orphans --detach
 	$(call taskDone)
 
 .PHONY: restart
-restart: ## Docker: restarts the service
+restart: ## Docker: restarts the service <env=[dev|prod]>
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Restarting service\(s\)...")
+	@echo ""
 	@$(DOCKER_COMPOSE) restart
 	$(call taskDone)
 
 .PHONY: down
-down: ## Docker: stops the service
-	@$(DOCKER_COMPOSE) down --remove-orphans
+down: ## Docker: stops the service <env=[dev|prod]>
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Stopping service\(s\)...")
+	@echo ""
+	@$(DOCKER_COMPOSE) down $(DOCKER_COMPOSE_FILES) --remove-orphans
 	$(call taskDone)
 
 .PHONY: logs
-logs: ## Docker: exposes the service logs
-	@$(DOCKER_COMPOSE) logs
+logs: ## Docker: exposes the service logs <env=[dev|prod]> <service=[app1|caddy]>
+	@$(eval env ?= 'dev')
+	@$(eval service ?= 'app1')
+	$(call showInfo,"Exposing service\(s\) logs...")
+	@echo ""
+	@$(DOCKER_COMPOSE) logs -f $(service)
 	$(call taskDone)
 
-.PHONY: bash
-bash: ## Docker: establish a bash session into main container
-	$(DOCKER_RUN_AS_USER) bash
+.PHONY: shell
+shell: ## Docker: establish a shell session into main container
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Establishing a shell terminal with main service...")
+	@echo ""
+	@$(DOCKER_RUN_AS_USER) sh
+	$(call taskDone)
+
+.PHONY: inspect
+inspect: ## Docker: inspect the health for specific service <service=[app1|caddy]>
+	@$(eval service ?= 'app1')
+	$(call showInfo,"Inspecting the health for a specific service...")
+	@echo ""
+	@docker inspect --format "{{json .State.Health}}" $(service) | jq
+	@echo ""
+	$(call taskDone)
 
 ###
 # CADDY
 ###
 
-.PHONY: extract-caddy-certificate
-extract-caddy-certificate: up ## Setup: extracts the Caddy Local Authority certificate
+.PHONY: install-caddy-certificate
+install-caddy-certificate: up ## Setup: extracts the Caddy Local Authority certificate
+	$(call showInfo,"Extracting Caddy Certificate Authority file...")
+	@echo ""
 	@echo "How to install [ $(YELLOW)Caddy Local Authority - 20XX ECC Root$(RESET) ] as a valid Certificate Authority"
 	$(call orderedList,1,"Copy the root certificate from Caddy Docker container")
 	@docker cp $(SERVICE_CADDY):/data/caddy/pki/authorities/local/root.crt ./caddy-root-ca-authority.crt
@@ -181,27 +207,52 @@ extract-caddy-certificate: up ## Setup: extracts the Caddy Local Authority certi
 # APPLICATION
 ###
 
-.PHONY: uninstall
-uninstall: require-confirm ## Application: removes the PHP application
-	$(call showInfo,"Uninstalling PHP Application")
-	@find ./src -type f -delete
-	@rm -Rf ./src/*
-	$(call taskDone)
-
 .PHONY: install-skeleton
 install-skeleton: ## Application: installs PHP Skeleton
-	$(call showInfo,"Installing PHP Skeleton")
-	$(DOCKER_RUN_AS_USER) composer create-project alcidesrc/php-skeleton .
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Installing PHP Skeleton...")
+	@echo ""
+	@$(DOCKER_RUN_AS_USER) composer create-project alcidesrc/php-skeleton .
 	$(call taskDone)
 
 .PHONY: install-laravel
 install-laravel: ## Application: installs Laravel
-	$(call showInfo,"Installing Laravel")
-	$(DOCKER_RUN_AS_USER) composer create-project laravel/laravel .
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Installing Laravel...")
+	@echo ""
+	@$(DOCKER_RUN_AS_USER) composer create-project laravel/laravel .
 	$(call taskDone)
 
 .PHONY: install-symfony
 install-symfony: ## Application: installs Symfony
-	$(call showInfo,"Installing Symfony")
-	$(DOCKER_RUN_AS_USER) composer create-project symfony/skeleton .
+	@$(eval env ?= 'dev')
+	$(call showInfo,"Installing Symfony...")
+	@echo ""
+	@$(DOCKER_RUN_AS_USER) composer create-project symfony/skeleton .
+	$(call taskDone)
+
+.PHONY: uninstall
+uninstall: require-confirm ## Application: removes the PHP application
+	$(call showInfo,"Uninstalling PHP application...")
+	@rm -Rf ./src && mkdir ./src
+	$(call taskDone)
+
+###
+# MISCELANEOUS
+###
+
+.PHONY: open-website
+open-website: ## Application: open the application website
+	$(call showInfo,"Opening web application...")
+	@echo ""
+	@xdg-open $(WEBSITE_URL)
+	@$(call showAlert,"Press Ctrl+C to resume your session")
+	$(call taskDone)
+
+.PHONY: open-supervisor
+open-supervisor: ## Application: open the supervisor website
+	$(call showInfo,"Opening web Supervisor application...")
+	@echo ""
+	@xdg-open $(SUPERVISOR_URL)
+	@$(call showAlert,"Press Ctrl+C to resume your session")
 	$(call taskDone)

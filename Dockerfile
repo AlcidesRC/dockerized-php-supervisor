@@ -4,7 +4,7 @@
 # STAGE: BASE-IMAGE
 #----------------------------------------------------------
 
-FROM php:8.3.10-fpm-alpine AS base-image
+FROM php:8.3.12-fpm-alpine AS base-image
 
 #----------------------------------------------------------
 # STAGE: COMMON
@@ -14,12 +14,13 @@ FROM base-image AS common
 
 # Add OS dependencies
 RUN apk update && apk add --no-cache \
-        fcgi
+        fcgi \
+        libzip
 
 # Add a custom HEALTHCHECK script
 # Ensure the `healthcheck.sh` can be executed inside the container
 COPY --chmod=777 build/healthcheck.sh /healthcheck.sh
-HEALTHCHECK --interval=10s --timeout=1s --retries=3 CMD /healthcheck.sh
+HEALTHCHECK --interval=30s --timeout=1s --retries=3 --start-period=10s --start-interval=2s CMD /healthcheck.sh
 
 WORKDIR /var/www/html
 
@@ -31,7 +32,7 @@ FROM base-image AS extensions-builder-common
 
 # Add, compile and configure PHP extensions
 RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o - | sh -s \
-        apcu
+        zip
 
 #----------------------------------------------------------
 # STAGE: EXTENSIONS-BUILDER-DEV
@@ -76,7 +77,6 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 # Add OS dependencies related with development
 RUN apk update && apk add --no-cache \
-        bash \
         git \
         make \
         ncurses \
@@ -150,7 +150,7 @@ FROM common AS build-production
 
 ENV ENV=PRODUCTION
 
-# Add __ONLY__ compiled extensions & their config files 
+# Add __ONLY__ compiled extensions & their config files
 COPY --from=extensions-builder-common /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20230831/
 COPY --from=extensions-builder-common /usr/local/etc/php/conf.d/* /usr/local/etc/php/conf.d/
 

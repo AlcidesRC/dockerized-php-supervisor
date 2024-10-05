@@ -14,7 +14,7 @@
 
 ## Summary
 
-This repository contains a _dockerized_ environment for building PHP applications based on **php:8.3.10-fpm-alpine** with Supervisor support.
+This repository contains a _dockerized_ environment for building PHP applications based on **php:8.3.12-fpm-alpine** with Supervisor support.
 
 ### Highlights
 
@@ -22,14 +22,7 @@ This repository contains a _dockerized_ environment for building PHP application
 - Allows you to create an optimized **development environment** Docker image
 - Allows you to create an optimized **production-ready** Docker image
 -  Using **built-in PHP webserver**.
--  PHP-FPM and built-in webserver is managed by Supervisor.
-
-### Infrastructure
-
-| Docker Infrastructure | Value | Size  |
-| --------------------- | ----- | ----- |
-| Containers            | 1     | 159Mb |
-| Services              | 1     | N/A   |
+-  PHP-FPM and built-in webserver are managed by Supervisor.
 
 
 
@@ -44,6 +37,7 @@ To use this repository you need:
 - [Docker](https://www.docker.com/) - An open source containerization platform.
 - [Git](https://git-scm.com/) - The free and open source distributed version control system.
 - [Make](https://www.gnu.org/software/make/) - A command to automate the build/manage process.
+- [jq](https://jqlang.github.io/jq/download/) - A lightweight and flexible command-line JSON processor.
 
 
 
@@ -60,6 +54,7 @@ To use this repository you need:
 | Service        | [PHP-FPM](https://www.php.net/manual/en/install.fpm.php) | PHP with FastCGI Process Manager                             |
 | Miscelaneous   | [Bash](https://www.gnu.org/software/bash/)               | Allows to create an interactive shell within containerized service |
 | Miscelaneous   | [Make](https://www.gnu.org/software/make/)               | Allows to execute commands defined on a _Makefile_           |
+| Miscelaneous   | [jq](https://jqlang.github.io/jq/download/)              | Allows to beautify the Docker inspections in JSON format     |
 
 
 
@@ -100,33 +95,39 @@ $ mkdir -p ~/path/to/my-new-project && cd ~/path/to/my-new-project
 $ git clone git@github.com:alcidesrc/dockerized-php-supervisor.git .
 ```
 
+### In short
 
+```bash
+$ make init
+```
 
-### Building the container
+### TL;DR
+
+#### Building the container
 
 ```bash
 $ make build
 ```
 
-### Starting the container service
+#### Starting the container service
 
 ```bash
 $ make up
 ```
 
-### Accessing to Supervisor Status web panel
+#### Accessing to Supervisor Status web panel
 
 ```bash
-$ xdg-open http://guest:guest@localhost:9001
+$ make open-supervisor
 ```
 
-### Accessing to web application
+#### Accessing to web application
 
 ```bash
-$ xdg-open http://localhost
+$ make open-website
 ```
 
-### Stopping the container service
+#### Stopping the container service
 
 ```bash
 $ make down

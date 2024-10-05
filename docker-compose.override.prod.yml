@@ -1,0 +1,10 @@
+services:
+    app1:
+        extends:
+            file: docker-compose.yml
+            service: app1
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: build-production
+        image: dockerized-php-supervisor:prod

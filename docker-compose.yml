@@ -1,11 +1,11 @@
 services:
-    app:
-        container_name: app
+    app1:
+        container_name: app1
         build:
             context: .
             dockerfile: Dockerfile
             target: build-development
-        image: app:supervisor
+        image: dockerized-php-supervisor:dev
         restart: unless-stopped
         tty: true
         volumes:
