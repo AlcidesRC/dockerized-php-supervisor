@@ -153,7 +153,7 @@ down: ## Docker: stops the service <env=[dev|prod]>
 .PHONY: logs
 logs: ## Docker: exposes the service logs <env=[dev|prod]> <service=[app1|caddy]>
 	@$(eval env ?= 'dev')
-	@$(eval service ?= 'app1')
+	@$(eval service ?= $(SERVICE_APP))
 	$(call showInfo,"Exposing service\(s\) logs...")
 	@echo ""
 	@$(DOCKER_COMPOSE) logs -f $(service)
@@ -169,7 +169,7 @@ shell: ## Docker: establish a shell session into main container
 
 .PHONY: inspect
 inspect: ## Docker: inspect the health for specific service <service=[app1|caddy]>
-	@$(eval service ?= 'app1')
+	@$(eval service ?= $(SERVICE_APP))
 	$(call showInfo,"Inspecting the health for a specific service...")
 	@echo ""
 	@docker inspect --format "{{json .State.Health}}" $(service) | jq
