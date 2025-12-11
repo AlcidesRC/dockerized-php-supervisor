@@ -4,7 +4,7 @@
 # STAGE: BASE-IMAGE
 #----------------------------------------------------------
 
-FROM php:8.3.12-fpm-alpine AS base-image
+FROM php:8.5-fpm-alpine AS base-image
 
 #----------------------------------------------------------
 # STAGE: COMMON
@@ -42,8 +42,6 @@ FROM extensions-builder-common AS extensions-builder-dev
 
 # Add, compile and configure PHP extensions
 RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o - | sh -s \
-        pcov \
-        uopz \
         xdebug
 
 #----------------------------------------------------------
@@ -69,7 +67,7 @@ RUN chown -Rf ${HOST_USER_NAME}:${HOST_GROUP_NAME} /var/www/html \
     && rm -Rf /var/www/html/*
 
 # Add __ONLY__ compiled extensions & their config files
-COPY --from=extensions-builder-dev /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20230831/
+COPY --from=extensions-builder-dev /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20250925/
 COPY --from=extensions-builder-dev /usr/local/etc/php/conf.d/* /usr/local/etc/php/conf.d/
 
 # Add Composer from public Docker image
@@ -151,7 +149,7 @@ FROM common AS build-production
 ENV ENV=PRODUCTION
 
 # Add __ONLY__ compiled extensions & their config files
-COPY --from=extensions-builder-common /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20230831/
+COPY --from=extensions-builder-common /usr/local/lib/php/extensions/*/* /usr/local/lib/php/extensions/no-debug-non-zts-20250925/
 COPY --from=extensions-builder-common /usr/local/etc/php/conf.d/* /usr/local/etc/php/conf.d/
 
 # Add the optimized for production application
